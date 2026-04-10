@@ -73,3 +73,43 @@ def get_dataloader(
         pin_memory=True,
     )
     return loader
+
+
+def get_dataloaders(
+    batch_size: int = 64,
+    image_size: int = 32,
+    root: str = "./data",
+    num_workers: int = 2,
+    download: bool = True,
+):
+    train_loader = get_dataloader(
+        split="train",
+        batch_size=batch_size,
+        image_size=image_size,
+        root=root,
+        shuffle=True,
+        num_workers=num_workers,
+        download=download,
+    )
+
+    val_loader = get_dataloader(
+        split="val",
+        batch_size=batch_size,
+        image_size=image_size,
+        root=root,
+        shuffle=False,
+        num_workers=num_workers,
+        download=download,
+    )
+
+    test_loader = get_dataloader(
+        split="test",
+        batch_size=batch_size,
+        image_size=image_size,
+        root=root,
+        shuffle=False,
+        num_workers=num_workers,
+        download=download,
+    )
+
+    return train_loader, val_loader, test_loader
