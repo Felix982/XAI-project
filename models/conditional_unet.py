@@ -77,6 +77,6 @@ def sanity_check_conditional_unet(
         size=(batch_size,),
         device=device,
     )
-    
+
     out = model(x, t, class_labels=y)
     return out.sample.shape
