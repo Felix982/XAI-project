@@ -48,14 +48,35 @@ def sanity_check_conditional_unet(
     model: UNet2DModel,
     batch_size: int = 4,
     image_size: int = 32,
+    num_train_timesteps: int = 1000,  # scheduler setting, not UNet config
     device: str = "cpu",
 ):
     """
     Quick shape test for the conditional UNet.
     """
-    x = torch.randn(batch_size, model.config.in_channels, image_size, image_size, device=device)
-    t = torch.randint(0, model.config.num_train_timesteps, (batch_size,), device=device)
-    y = torch.randint(0, model.config.num_class_embeds, (batch_size,), device=device)
+    x = torch.randn(
+        batch_size,
+        model.config.in_channels,
+        image_size,
+        image_size,
+        device=device,
+    )
 
+    # Sample random diffusion timesteps.
+    t = torch.randint(
+        low=0,
+        high=num_train_timesteps,
+        size=(batch_size,),
+        device=device,
+    )
+
+    # Sample random class labels.
+    y = torch.randint(
+        low=0,
+        high=model.config.num_class_embeds,
+        size=(batch_size,),
+        device=device,
+    )
+    
     out = model(x, t, class_labels=y)
     return out.sample.shape
