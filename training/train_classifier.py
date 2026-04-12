@@ -17,6 +17,7 @@ class TrainConfig:
     data_root: str = "./data"
     image_size: int = 32
     batch_size: int = 64
+    num_channels: int = 3
     num_workers: int = 2
 
     lr: float = 1e-3
@@ -51,6 +52,7 @@ def build_loaders(cfg: TrainConfig) -> Tuple[DataLoader, DataLoader, DataLoader]
         split="train",
         batch_size=cfg.batch_size,
         image_size=cfg.image_size,
+        num_channels=cfg.num_channels,
         root=cfg.data_root,
         shuffle=True,
         num_workers=cfg.num_workers,
@@ -60,6 +62,7 @@ def build_loaders(cfg: TrainConfig) -> Tuple[DataLoader, DataLoader, DataLoader]
         split="val",
         batch_size=cfg.batch_size,
         image_size=cfg.image_size,
+        num_channels=cfg.num_channels,
         root=cfg.data_root,
         shuffle=False,
         num_workers=cfg.num_workers,
@@ -69,6 +72,7 @@ def build_loaders(cfg: TrainConfig) -> Tuple[DataLoader, DataLoader, DataLoader]
         split="test",
         batch_size=cfg.batch_size,
         image_size=cfg.image_size,
+        num_channels=cfg.num_channels,
         root=cfg.data_root,
         shuffle=False,
         num_workers=cfg.num_workers,
@@ -187,7 +191,7 @@ def train_classifier(cfg: TrainConfig) -> Dict[str, object]:
     train_loader, val_loader, test_loader = build_loaders(cfg)
 
     model = SmallCNNClassifier(
-        in_channels=1,
+        in_channels=cfg.num_channels,
         base_channels=cfg.base_channels,
         dropout=cfg.dropout,
     ).to(cfg.device)
