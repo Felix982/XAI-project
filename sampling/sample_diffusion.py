@@ -22,6 +22,9 @@ class SampleConfig:
     image_size: int = 32
     num_channels: int = 3
 
+    #delta
+    delta: float = 0.0
+
     num_inference_steps: int = 50
     num_train_timesteps: int = 1000
 
@@ -108,6 +111,9 @@ def sample_class_conditional(cfg: SampleConfig) -> torch.Tensor:
         cfg.image_size,
         device=cfg.device,
     )
+    # Add delta to target pf forward process z_T=x_T
+    delta_tensor=torch.full_like(x, fill_value=cfg.delta)
+    x+=delta_tensor
 
     class_labels = torch.full(
         (cfg.batch_size,),
@@ -123,6 +129,9 @@ def sample_class_conditional(cfg: SampleConfig) -> torch.Tensor:
         # DDIM update step.
         step_output = scheduler.step(noise_pred, t, x)
         x = step_output.prev_sample
+
+        #add delta to mean mu by adding it to x
+        x+=delta_tensor
 
     return x
 

@@ -26,7 +26,10 @@ class DiffusionTrainConfig:
     num_classes: int = 2
     batch_size: int = 64
     num_workers: int = 2
-
+    
+    # delta
+    delta: float = 0.0
+   
     # Model
     pretrained_repo_id: str = "google/ddpm-cifar10-32"
 
@@ -89,6 +92,7 @@ def train_one_epoch(
     loader,
     optimizer: torch.optim.Optimizer,
     device: str,
+    delta:float =0.0,
 ) -> Dict[str, float]:
     model.train()
 
@@ -101,9 +105,10 @@ def train_one_epoch(
         bsz = x0.size(0)
 
         # Sample random noise.
-        noise = torch.randn_like(x0)
+        noise = torch.randn_like(x0) + delta
 
         # Sample a random timestep for each image.
+
         timesteps = torch.randint(
             low=0,
             high=scheduler.config.num_train_timesteps,
@@ -138,6 +143,7 @@ def evaluate(
     scheduler: DDPMScheduler,
     loader,
     device: str,
+    delta: float=0.0,
 ) -> Dict[str, float]:
     model.eval()
 
@@ -149,7 +155,7 @@ def evaluate(
         y = batch["label"].to(device, non_blocking=True)
         bsz = x0.size(0)
 
-        noise = torch.randn_like(x0)
+        noise = torch.randn_like(x0)+delta
 
         timesteps = torch.randint(
             low=0,
@@ -220,6 +226,7 @@ def train_diffusion(cfg: DiffusionTrainConfig) -> Dict[str, object]:
             loader=train_loader,
             optimizer=optimizer,
             device=cfg.device,
+            delta=cfg.delta
         )
 
         val_metrics = evaluate(
@@ -227,6 +234,7 @@ def train_diffusion(cfg: DiffusionTrainConfig) -> Dict[str, object]:
             scheduler=scheduler,
             loader=val_loader,
             device=cfg.device,
+            delta=cfg.delta
         )
 
         epoch_stats = {
