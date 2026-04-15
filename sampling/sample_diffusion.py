@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import List
 
+from sympy import false
 import torch
 from diffusers import DDIMScheduler
 from PIL import Image
@@ -22,9 +23,12 @@ class SampleConfig:
     image_size: int = 32
     num_channels: int = 3
 
-    #delta
+    # delta
     delta: float = 0.0
-
+    use_corrected:bool = True
+    
+    
+    
     num_inference_steps: int = 50
     num_train_timesteps: int = 1000
 
@@ -130,8 +134,19 @@ def sample_class_conditional(cfg: SampleConfig) -> torch.Tensor:
         step_output = scheduler.step(noise_pred, t, x)
         x = step_output.prev_sample
 
-        #add delta to mean mu by adding it to x
-        x+=delta_tensor
+        if cfg.use_corrected:
+            #retrieve alpha_bar_t-1
+            prev_t = t - scheduler.config.num_train_timesteps // scheduler.num_inference_steps
+            alpha_bar_prev = (
+                scheduler.alphas_cumprod[prev_t].to(x.device)
+                if prev_t >= 0
+                else scheduler.final_alpha_cumprod.to(x.device)
+            )
+
+            x+=delta_tensor*torch.sqrt(1.0 - alpha_bar_prev)
+        else:
+            #add delta to mean mu by adding it to x
+            x+=delta_tensor
 
     return x
 
