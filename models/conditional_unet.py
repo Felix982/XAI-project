@@ -10,6 +10,7 @@ def build_class_conditional_unet_from_pretrained(
     repo_id: str = "google/ddpm-cifar10-32",
     num_classes: int = 2,
     device: str | None = None,
+    
 ) -> Tuple[UNet2DModel, Dict[str, Any]]:
     """
     Load the pretrained unconditional UNet, then instantiate the same architecture
