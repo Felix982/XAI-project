@@ -166,7 +166,7 @@ def sample_class_conditional(cfg: SampleConfig) -> torch.Tensor:
                 step_idx=step_idx,
                 device=x.device,
             )
-            x = x + delta_tensor * torch.sqrt(1.0 - alpha_bar_prev) + 1.
+            x = x + delta_tensor * torch.sqrt(1.0 - alpha_bar_prev)
             
         else:
             x = x + delta_tensor 
