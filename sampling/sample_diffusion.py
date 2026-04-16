@@ -30,8 +30,6 @@ class SampleConfig:
     delta: float = 0.0
     use_corrected:bool = True
     
-    
-    
     num_inference_steps: int = 50
     num_train_timesteps: int = 1000
 
@@ -160,7 +158,7 @@ def sample_class_conditional(cfg: SampleConfig) -> torch.Tensor:
         # DDIM update step.
         step_output = scheduler.step(noise_pred, t, x)
         x = step_output.prev_sample
-
+        
         if cfg.use_corrected:
             alpha_bar_prev = get_alpha_bar_prev(
                 scheduler=scheduler,
@@ -169,9 +167,10 @@ def sample_class_conditional(cfg: SampleConfig) -> torch.Tensor:
                 device=x.device,
             )
             x = x + delta_tensor * torch.sqrt(1.0 - alpha_bar_prev)
+            print("hey")
         else:
-            x = x + delta_tensor
-
+            x = x + delta_tensor 
+            print("hello")
     return x
 
 
