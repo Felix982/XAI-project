@@ -16,6 +16,8 @@ from diffusers import DDPMScheduler
 from data.medmnist import get_dataloaders
 from models.conditional_unet import build_class_conditional_unet_from_pretrained
 
+from torch.utils.tensorboard import SummaryWriter
+
 
 @dataclass
 class DiffusionTrainConfig:
@@ -184,6 +186,8 @@ def train_diffusion(cfg: DiffusionTrainConfig) -> Dict[str, object]:
 
     with open(os.path.join(cfg.output_dir, "train_config.json"), "w") as f:
         json.dump(asdict(cfg), f, indent=2)
+    tb_dir = os.path.join(cfg.output_dir, cfg.tensorboard_subdir)
+    writer = SummaryWriter(log_dir=tb_dir)
 
     train_loader, val_loader, _ = get_dataloaders(
         batch_size=cfg.batch_size,
@@ -276,6 +280,10 @@ def train_diffusion(cfg: DiffusionTrainConfig) -> Dict[str, object]:
             cfg=cfg,
         )
 
+        writer.add_scalar("loss/train", train_metrics["loss"], epoch)
+        writer.add_scalar("loss/val", val_metrics["loss"], epoch)
+        writer.add_scalar("config/delta", cfg.delta, epoch)
+
         with open(os.path.join(cfg.output_dir, "history.json"), "w") as f:
             json.dump(history, f, indent=2)
 
@@ -297,5 +305,6 @@ def train_diffusion(cfg: DiffusionTrainConfig) -> Dict[str, object]:
 
     with open(os.path.join(cfg.output_dir, "final_results.json"), "w") as f:
         json.dump(results, f, indent=2)
-
+    writer.flush()
+    writer.close()
     return results
