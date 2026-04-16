@@ -47,7 +47,10 @@ class DiffusionTrainConfig:
     output_dir: str = "./outputs/diffusion"
     best_model_name: str = "diffusion_best.pt"
     last_model_name: str = "diffusion_last.pt"
-
+    history_json_name: str = "history.json"
+    history_csv_name: str = "history.csv"
+    final_results_name: str = "final_results.json"
+    tensorboard_subdir: str = "tb"
     # Early stopping
     early_stopping_patience: int = 5
     min_delta: float = 1e-4
