@@ -6,7 +6,7 @@ import json
 import os
 from typing import List
 
-from training.train_diffusion_delta import DiffusionTrainConfig, train_diffusion
+from training.train_diffusion import DiffusionTrainConfig, train_diffusion
 
 
 def delta_to_name(delta: float) -> str:
