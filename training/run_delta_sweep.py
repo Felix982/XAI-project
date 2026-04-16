@@ -87,7 +87,8 @@ def main() -> None:
                 "last_model_path": results["last_model_path"],
                 "best_epoch": results["best_epoch"],
                 "best_val_loss": results["best_val_loss"],
-                "tensorboard_dir": results["tensorboard_dir"],
+                # Only include this if train_diffusion actually returns it.
+                "tensorboard_dir": results.get("tensorboard_dir", os.path.join(output_dir, "tb")),
             }
         )
 

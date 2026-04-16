@@ -291,6 +291,7 @@ def train_diffusion(cfg: DiffusionTrainConfig) -> Dict[str, object]:
         "best_val_loss": best_val_loss,
         "best_model_path": best_model_path,
         "last_model_path": last_model_path,
+        "tensorboard_dir": os.path.join(cfg.output_dir, "tb"),
         "history": history,
     }
 

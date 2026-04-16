@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import List
 
-from sympy import false
+import json
+import random
+import numpy as np
+
 import torch
 from diffusers import DDIMScheduler
 from PIL import Image
@@ -38,6 +41,16 @@ class SampleConfig:
 
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
+def set_seed(seed: int) -> None:
+    """
+    Seed Python, NumPy and PyTorch before sampling.
+    Important so corrected vs uncorrected use the same random start.
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 def denormalize_to_uint8(x: torch.Tensor) -> torch.Tensor:
     """
@@ -49,6 +62,9 @@ def denormalize_to_uint8(x: torch.Tensor) -> torch.Tensor:
     x = (x * 255.0).round().to(torch.uint8)
     return x
 
+def ensure_dir(path: str) -> None:
+    """Create a directory if it does not already exist."""
+    os.makedirs(path, exist_ok=True)
 
 def save_image_grid(images: torch.Tensor, save_path: str, nrow: int | None = None) -> None:
     """
@@ -96,9 +112,8 @@ def sample_class_conditional(cfg: SampleConfig) -> torch.Tensor:
     Sample a batch of images conditioned on one class label.
     Returns images in [-1, 1], shape (B, C, H, W).
     """
-    torch.manual_seed(cfg.seed)
-    if cfg.device.startswith("cuda"):
-        torch.cuda.manual_seed_all(cfg.seed)
+    set_seed(cfg.seed)
+
 
     model = load_finetuned_conditional_unet(cfg)
 
@@ -126,7 +141,8 @@ def sample_class_conditional(cfg: SampleConfig) -> torch.Tensor:
         dtype=torch.long,
     )
 
-    for t in scheduler.timesteps:
+    timesteps = scheduler.timesteps
+    for step_idx, t in enumerate(timesteps):
         # Predict noise at current step.
         noise_pred = model(x, t, class_labels=class_labels).sample
 
@@ -135,18 +151,15 @@ def sample_class_conditional(cfg: SampleConfig) -> torch.Tensor:
         x = step_output.prev_sample
 
         if cfg.use_corrected:
-            #retrieve alpha_bar_t-1
-            prev_t = t - scheduler.config.num_train_timesteps // scheduler.num_inference_steps
-            alpha_bar_prev = (
-                scheduler.alphas_cumprod[prev_t].to(x.device)
-                if prev_t >= 0
-                else scheduler.final_alpha_cumprod.to(x.device)
+            alpha_bar_prev = get_alpha_bar_prev(
+                scheduler=scheduler,
+                timesteps=timesteps,
+                step_idx=step_idx,
+                device=x.device,
             )
-
-            x+=delta_tensor*torch.sqrt(1.0 - alpha_bar_prev)
+            x = x + delta_tensor * torch.sqrt(1.0 - alpha_bar_prev)
         else:
-            #add delta to mean mu by adding it to x
-            x+=delta_tensor
+            x = x + delta_tensor
 
     return x
 
@@ -157,17 +170,21 @@ def generate_and_save_samples(cfg: SampleConfig) -> List[str]:
     - one grid image
     - individual images
     """
-    os.makedirs(cfg.output_dir, exist_ok=True)
 
+    ensure_dir(cfg.output_dir)
+    
+    with open(os.path.join(cfg.output_dir, "sample_config.json"), "w", encoding="utf-8") as f:
+        json.dump(asdict(cfg), f, indent=2)
     samples = sample_class_conditional(cfg)
     samples_uint8 = denormalize_to_uint8(samples)
 
     saved_paths = []
 
+    strategy_name = "corrected" if cfg.use_corrected else "uncorrected"
     # Save grid.
     grid_path = os.path.join(
         cfg.output_dir,
-        f"samples_class_{cfg.class_label}_grid.png",
+        f"samples_class_{cfg.class_label}_{strategy_name}_grid.png"
     )
     save_image_grid(samples_uint8, grid_path)
     saved_paths.append(grid_path)
@@ -177,9 +194,21 @@ def generate_and_save_samples(cfg: SampleConfig) -> List[str]:
         img = samples_uint8[i].permute(1, 2, 0).cpu().numpy()
         img_path = os.path.join(
             cfg.output_dir,
-            f"class_{cfg.class_label}_sample_{i:03d}.png",
+            f"class_{cfg.class_label}_{strategy_name}_sample_{i:03d}.png",
         )
         Image.fromarray(img).save(img_path)
         saved_paths.append(img_path)
 
     return saved_paths
+
+    def get_alpha_bar_prev(scheduler: DDIMScheduler, timesteps: torch.Tensor, step_idx: int, device: str):
+        """
+        Return alpha_bar at the previous DDIM step.
+
+        We do not manually guess the previous timestep using a stride.
+        Instead, we read it directly from scheduler.timesteps, which is safer.
+        """
+        if step_idx + 1 < len(timesteps):
+            prev_t = int(timesteps[step_idx + 1].item())
+            return scheduler.alphas_cumprod[prev_t].to(device)
+        return scheduler.final_alpha_cumprod.to(device)
