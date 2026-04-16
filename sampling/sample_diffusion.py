@@ -89,7 +89,18 @@ def save_image_grid(images: torch.Tensor, save_path: str, nrow: int | None = Non
 
     grid.save(save_path)
 
+def get_alpha_bar_prev(scheduler: DDIMScheduler, timesteps: torch.Tensor, step_idx: int, device: str):
+        """
+        Return alpha_bar at the previous DDIM step.
 
+        We do not manually guess the previous timestep using a stride.
+        Instead, we read it directly from scheduler.timesteps, which is safer.
+        """
+        if step_idx + 1 < len(timesteps):
+            prev_t = int(timesteps[step_idx + 1].item())
+            return scheduler.alphas_cumprod[prev_t].to(device)
+        return scheduler.final_alpha_cumprod.to(device)
+        
 def load_finetuned_conditional_unet(cfg: SampleConfig):
     """
     Rebuild the same conditional UNet, then load the fine-tuned weights.
@@ -201,14 +212,4 @@ def generate_and_save_samples(cfg: SampleConfig) -> List[str]:
 
     return saved_paths
 
-    def get_alpha_bar_prev(scheduler: DDIMScheduler, timesteps: torch.Tensor, step_idx: int, device: str):
-        """
-        Return alpha_bar at the previous DDIM step.
-
-        We do not manually guess the previous timestep using a stride.
-        Instead, we read it directly from scheduler.timesteps, which is safer.
-        """
-        if step_idx + 1 < len(timesteps):
-            prev_t = int(timesteps[step_idx + 1].item())
-            return scheduler.alphas_cumprod[prev_t].to(device)
-        return scheduler.final_alpha_cumprod.to(device)
+    
